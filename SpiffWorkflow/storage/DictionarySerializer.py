@@ -22,6 +22,8 @@ from SpiffWorkflow.operators import *
 from SpiffWorkflow.specs.TaskSpec import TaskSpec
 from SpiffWorkflow.specs import *
 from SpiffWorkflow.storage.Serializer import Serializer
+from SpiffWorkflow.storage.Exceptions import TaskNotSupportedError
+import warnings
 
 class DictionarySerializer(Serializer):
     def _serialize_dict(self, thedict):
@@ -150,7 +152,7 @@ class DictionarySerializer(Serializer):
         return s_state
 
     def _deserialize_acquire_mutex(self, wf_spec, s_state):
-        spec = AcquireMutex(wf_spec, s_state['name'])
+        spec = AcquireMutex(wf_spec, s_state['name'], s_state['mutex'])
         self._deserialize_task_spec(wf_spec, s_state, spec=spec)
         spec.mutex = s_state['mutex']
         return spec
@@ -161,7 +163,8 @@ class DictionarySerializer(Serializer):
         return s_state
 
     def _deserialize_cancel(self, wf_spec, s_state):
-        spec = Cancel(wf_spec, s_state['name'], success=cancel_successfully)
+        spec = Cancel(wf_spec, s_state['name'],
+                      success=s_state['cancel_successfully'])
         self._deserialize_task_spec(wf_spec, s_state, spec=spec)
         return spec
 
@@ -169,8 +172,11 @@ class DictionarySerializer(Serializer):
         return self._serialize_trigger(spec)
 
     def _deserialize_cancel_task(self, wf_spec, s_state):
-        spec = CancelTask(wf_spec, s_state['name'])
-        self._deserialize_trigger(wf_spec, s_state, spec=spec)
+        spec = CancelTask(wf_spec,
+                          s_state['name'],
+                          s_state['context'],
+                          times=s_state['times'])
+        self._deserialize_task_spec(wf_spec, s_state, spec=spec)
         return spec
 
     def _serialize_celery(self, spec):
@@ -194,9 +200,14 @@ class DictionarySerializer(Serializer):
         return spec
 
     def _serialize_choose(self, spec):
-        s_state = self._serialize_trigger(spec)
+        s_state = self._serialize_task_spec(spec)
         s_state['context'] = spec.context
-        s_state['choice'] = [c.name for c in spec.choice]
+        # despite the various documentation suggesting that choice ought to be
+        # a collection of objects, here it is a collection of strings. The
+        # handler in MultiChoice.py converts it to TaskSpecs. So instead of:
+        #s_state['choice'] = [c.name for c in spec.choice]
+        # we have:
+        s_state['choice'] = spec.choice
         return s_state
 
     def _deserialize_choose(self, wf_spec, s_state):
@@ -204,7 +215,7 @@ class DictionarySerializer(Serializer):
                       s_state['name'],
                       s_state['context'],
                       s_state['choice'])
-        self._deserialize_trigger(wf_spec, s_state, spec=spec)
+        self._deserialize_task_spec(wf_spec, s_state, spec=spec)
         return spec
 
     def _serialize_exclusive_choice(self, spec):
@@ -260,14 +271,19 @@ class DictionarySerializer(Serializer):
         for condition, spec_name in spec.cond_task_specs:
             cond = self._serialize_arg(condition)
             thestate.append((cond, spec_name))
-        s_state['choice'] = spec.choice and spec.choice.name or None
+        # spec.choice is actually a list of strings in MultiChoice: see
+        # _predict_hook. So, instead of
+        #s_state['choice'] = spec.choice and spec.choice.name or None
+        s_state['choice'] = spec.choice or None
         return s_state
 
     def _deserialize_multi_choice(self, wf_spec, s_state, spec=None):
         if spec is None:
             spec = MultiChoice(wf_spec, s_state['name'])
         if s_state.get('choice') is not None:
-            spec.choice = wf_spec.get_task_spec_from_name(s_state['choice'])
+            # this is done in _predict_hook: it's kept as a string for now.
+            # spec.choice = wf_spec.get_task_spec_from_name(s_state['choice'])
+            spec.choice = s_state['choice']
         for cond, spec_name in s_state['cond_task_specs']:
             condition = self._deserialize_arg(cond)
             spec.cond_task_specs.append((condition, spec_name))
@@ -315,6 +331,9 @@ class DictionarySerializer(Serializer):
         return spec
 
     def _serialize_sub_workflow(self, spec):
+        warnings.warn("SubWorkflows cannot be safely serialized as they only" +
+                      " store a reference to the subworkflow specification " +
+                      " as a path to an external XML file.")
         s_state = self._serialize_task_spec(spec)
         s_state['file'] = spec.file
         s_state['in_assign'] = self._serialize_list(spec.in_assign)
@@ -322,10 +341,13 @@ class DictionarySerializer(Serializer):
         return s_state
 
     def _deserialize_sub_workflow(self, wf_spec, s_state):
+        warnings.warn("SubWorkflows cannot be safely deserialized as they " +
+                      "only store a reference to the subworkflow " +
+                      "specification as a path to an external XML file.")
         spec = SubWorkflow(wf_spec, s_state['name'], s_state['file'])
         self._deserialize_task_spec(wf_spec, s_state, spec=spec)
-        spec.in_assign = self._deserialize_dict(s_state['in_assign'])
-        spec.out_assign = self._deserialize_dict(s_state['out_assign'])
+        spec.in_assign = self._deserialize_list(s_state['in_assign'])
+        spec.out_assign = self._deserialize_list(s_state['out_assign'])
         return spec
 
     def _serialize_thread_merge(self, spec):
@@ -333,7 +355,10 @@ class DictionarySerializer(Serializer):
 
     def _deserialize_thread_merge(self, wf_spec, s_state):
         spec = ThreadMerge(wf_spec, s_state['name'], s_state['split_task'])
-        self._deserialize_join(wf_spec, s_state, spec=spec)
+        # while ThreadMerge is a Join, the _deserialise_join isn't what we want
+        # here: it makes a join from scratch which we don't need (the
+        # ThreadMerge constructor does it all). Just task_spec it.
+        self._deserialize_task_spec(wf_spec, s_state, spec=spec)
         return spec
 
     def _serialize_thread_split(self, spec):
@@ -346,7 +371,8 @@ class DictionarySerializer(Serializer):
         spec = ThreadSplit(wf_spec,
                            s_state['name'],
                            s_state['times'],
-                           s_state['times_attribute'])
+                           s_state['times_attribute'],
+                           suppress_threadstart_creation=True)
         self._deserialize_task_spec(wf_spec, s_state, spec=spec)
         return spec
 
@@ -354,6 +380,8 @@ class DictionarySerializer(Serializer):
         return self._serialize_task_spec(spec)
 
     def _deserialize_thread_start(self, wf_spec, s_state):
+        # specs/__init__.py deliberately hides this: forcibly import it
+        from SpiffWorkflow.specs.ThreadStart import ThreadStart
         spec = ThreadStart(wf_spec)
         self._deserialize_task_spec(wf_spec, s_state, spec=spec)
         return spec
@@ -465,6 +493,12 @@ class DictionarySerializer(Serializer):
 
     def _serialize_task(self, task, skip_children=False):
         assert isinstance(task, Task)
+
+        if isinstance(task.task_spec, SubWorkflow):
+            raise TaskNotSupportedError(
+                "Subworkflow tasks cannot be serialized (due to their use of" +
+                " internal_data to store the subworkflow).")
+        
         s_state = dict()
 
         # id
