@@ -15,10 +15,13 @@ from __future__ import division, unicode_literals, print_function
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
 from SpiffWorkflow.storage.DictionarySerializer import DictionarySerializer
 from SpiffWorkflow.operators import Attrib, Assign
+from SpiffWorkflow.specs import Join
 import copy
 
 
 class PureDictionarySerializer(DictionarySerializer):
+    """A version of the DictionarySerializer that does not pickle anything."""
+    
     def _serialize_dict(self, thedict):
         newdict = {}
         for key, value in thedict.items():
@@ -62,3 +65,20 @@ class PureDictionarySerializer(DictionarySerializer):
 
     def _deserialize_assign(self, s_state):
         return Assign(**s_state['__assign__'])
+
+    # we override these as spec.threshold was being pickled
+    def _serialize_join(self, spec):
+        s_state = self._serialize_task_spec(spec)
+        s_state['split_task'] = spec.split_task
+        s_state['threshold'] = self._serialize_item(spec.threshold)
+        s_state['cancel_remaining'] = spec.cancel_remaining
+        return s_state
+
+    def _deserialize_join(self, wf_spec, s_state):
+        spec = Join(wf_spec,
+                    s_state['name'],
+                    split_task=s_state['split_task'],
+                    threshold=self._deserialize_item(s_state['threshold']),
+                    cancel=s_state['cancel_remaining'])
+        self._deserialize_task_spec(wf_spec, s_state, spec=spec)
+        return spec
