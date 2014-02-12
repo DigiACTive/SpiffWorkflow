@@ -13,7 +13,7 @@ write_files = False
 
 from .SerializerTest import SerializerTest, SerializeEveryPatternTest
 from SpiffWorkflow import Workflow
-from SpiffWorkflow.storage.Exceptions import TaskSpecNotSupportedError, \
+from SpiffWorkflow.storage.exceptions import TaskSpecNotSupportedError, \
      TaskNotSupportedError
 from SpiffWorkflow.storage.NetworkXSerializer import NetworkXSerializer
 try:
