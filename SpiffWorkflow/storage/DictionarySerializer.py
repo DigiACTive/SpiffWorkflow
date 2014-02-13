@@ -22,20 +22,22 @@ from SpiffWorkflow.operators import *
 from SpiffWorkflow.specs.TaskSpec import TaskSpec
 from SpiffWorkflow.specs import *
 from SpiffWorkflow.storage.Serializer import Serializer
-from SpiffWorkflow.storage.Exceptions import TaskNotSupportedError
+from SpiffWorkflow.storage.exceptions import TaskNotSupportedError
 import warnings
 
 class DictionarySerializer(Serializer):
     def _serialize_dict(self, thedict):
-        return dict((k, b64encode(pickle.dumps(v)))
-                    for k, v in thedict.items())
+        return dict(
+            (k, b64encode(pickle.dumps(v, protocol=pickle.HIGHEST_PROTOCOL)))
+            for k, v in thedict.items())
 
     def _deserialize_dict(self, s_state):
         return dict((k, pickle.loads(b64decode(v)))
                     for k, v in s_state.items())
 
     def _serialize_list(self, thelist):
-        return [b64encode(pickle.dumps(v)) for v in thelist]
+        return [b64encode(pickle.dumps(v, protocol=pickle.HIGHEST_PROTOCOL))
+                for v in thelist]
 
     def _deserialize_list(self, s_state):
         return [pickle.loads(b64decode(v)) for v in s_state]
@@ -252,7 +254,8 @@ class DictionarySerializer(Serializer):
     def _serialize_join(self, spec):
         s_state = self._serialize_task_spec(spec)
         s_state['split_task'] = spec.split_task
-        s_state['threshold'] = b64encode(pickle.dumps(spec.threshold))
+        s_state['threshold'] = b64encode(
+            pickle.dumps(spec.threshold, protocol=pickle.HIGHEST_PROTOCOL))
         s_state['cancel_remaining'] = spec.cancel_remaining
         return s_state
 
@@ -446,7 +449,7 @@ class DictionarySerializer(Serializer):
                 **kwargs)
 
         # data
-        s_state['data'] = workflow.data
+        s_state['data'] =  self._serialize_dict(workflow.data)
 
         # last_node
         value = workflow.last_task
@@ -468,7 +471,7 @@ class DictionarySerializer(Serializer):
         workflow = Workflow(wf_spec)
 
         # data
-        workflow.data = s_state['data']
+        workflow.data = self._deserialize_dict(s_state['data'])
 
         # outer_workflow
         #workflow.outer_workflow =  find_workflow_by_id(remap_workflow_id(s_state['outer_workflow']))
@@ -525,7 +528,7 @@ class DictionarySerializer(Serializer):
         s_state['last_state_change'] = task.last_state_change
 
         # data
-        s_state['data'] = task.data
+        s_state['data'] =  self._serialize_dict(task.data)
 
         # internal_data
         s_state['internal_data'] = task.internal_data
@@ -557,7 +560,7 @@ class DictionarySerializer(Serializer):
         task.last_state_change = s_state['last_state_change']
 
         # data
-        task.data = s_state['data']
+        task.data = self._deserialize_dict(s_state['data'])
 
         # internal_data
         task.internal_data = s_state['internal_data']
