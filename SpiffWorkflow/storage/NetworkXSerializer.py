@@ -67,6 +67,7 @@ _state_to_text_colour_mapping = {
     Task.MAYBE: '#000000',
     Task.LIKELY: '#000000',
     Task.FUTURE: '#000000',
+    Task.WAITING: '#000000',
     Task.READY: '#000000',
     Task.COMPLETED: '#000000',
     Task.CANCELLED: '#FFFFFF'
