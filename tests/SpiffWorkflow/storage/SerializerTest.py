@@ -45,6 +45,11 @@ class SerializerTest(unittest.TestCase):
             self.assert_(isinstance(serialized2, self.serial_type))
             self.compareSerialization(serialized1, serialized2)
 
+            # do internal consistency checks
+            wf_spec.validate()
+            for name in wf_spec.task_specs:
+                wf_spec.task_specs[name].test()
+
             # Test whether the restored workflow still works.
             if path_file is None:
                 path_file = os.path.join(data_dir, 'spiff', 'workflow1.path')

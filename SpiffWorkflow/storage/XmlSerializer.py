@@ -318,9 +318,16 @@ class XmlSerializer(Serializer):
             for condition, successor_name in successors:
                 if successor_name not in read_specs:
                     _exc('Unknown successor: "%s"' % successor_name)
-                successor, foo = read_specs[successor_name]
+                successor, _ = read_specs[successor_name]
                 if condition is None:
                     spec.connect(successor)
                 else:
                     spec.connect_if(condition, successor)
+
+        # if the end task is not connected to anything - for example
+        # implicit_termination.xml - then delete it. Avoids the end task
+        # failing it's .test() method.
+        if end[0].inputs == []:
+            del workflow_spec.task_specs['End']
+
         return workflow_spec
