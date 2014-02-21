@@ -78,6 +78,15 @@ class ThreadSplit(TaskSpec):
         self.thread_starter.outputs.append(task_spec)
         task_spec._connect_notify(self.thread_starter)
 
+    def disconnect(self, task_spec):
+        """
+        Disconnect the given task_spec from this one. Inverse of connect:
+        the task must be an output of this task.
+        """
+        assert task_spec in self.thread_starter.outputs
+        self.thread_starter.outputs.remove(task_spec)
+        task_spec._disconnect_notify(self.thread_starter)
+
     def _find_my_task(self, workflow):
         for task in workflow.branch_tree:
             if task.thread_id != my_task.thread_id:

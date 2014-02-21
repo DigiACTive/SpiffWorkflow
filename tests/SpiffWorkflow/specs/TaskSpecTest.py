@@ -108,6 +108,48 @@ class TaskSpecTest(unittest.TestCase):
         self.assertEquals(M.ancestors(), [T2A, T1, self.wf_spec.start, T2B])
         self.assertEqual(len(T3.ancestors()), 5)
 
+    def testDisconnect(self):
+        T1 = Simple(self.wf_spec, 'T1')
+        T2A = Simple(self.wf_spec, 'T2A')
+        T2B = Simple(self.wf_spec, 'T2B')
+        M = Join(self.wf_spec, 'M')
+        T3 = Simple(self.wf_spec, 'T3')
+
+        T1.follow(self.wf_spec.start)
+        T2A.follow(T1)
+        T2B.follow(T1)
+        T2A.connect(M)
+        T2B.connect(M)
+        T3.follow(M)
+
+        self.assertEquals(M.ancestors(), [T2A, T1, self.wf_spec.start, T2B])
+        T2A.disconnect(M)
+        self.assertEquals(set(M.ancestors()),
+                          set([T1, self.wf_spec.start, T2B]))
+        M.follow(T2A)
+        self.assertEquals(set(M.ancestors()),
+                          set([T2A, T1, self.wf_spec.start, T2B]))
+
+    def testUnfollow(self):
+        T1 = Simple(self.wf_spec, 'T1')
+        T2A = Simple(self.wf_spec, 'T2A')
+        T2B = Simple(self.wf_spec, 'T2B')
+        M = Join(self.wf_spec, 'M')
+        T3 = Simple(self.wf_spec, 'T3')
+
+        T1.follow(self.wf_spec.start)
+        T2A.follow(T1)
+        T2B.follow(T1)
+        T2A.connect(M)
+        T2B.connect(M)
+        T3.follow(M)
+
+        self.assertEquals(len(T3.ancestors()), 5)
+        T3.unfollow(M)
+        self.assertEquals(T3.ancestors(), [])
+        M.connect(T3)
+        self.assertEquals(len(T3.ancestors()), 5)
+
     def test_ancestors_cyclic(self):
         T1 = Join(self.wf_spec, 'T1')
         T2 = Simple(self.wf_spec, 'T2')

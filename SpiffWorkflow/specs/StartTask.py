@@ -44,6 +44,14 @@ class StartTask(TaskSpec):
         """
         raise WorkflowException(self, 'StartTask can not have any inputs.')
 
+    def _disconnect_notify(self, task_spec):
+        """
+        Called by the previous task to let us know that it's disconnected us.
+        """
+        raise WorkflowException(self, 'StartTask can not have any inputs: ' +
+                                'yet an attempt has been made to remove one.' +
+                                ' Cowardly throwing an exception.')
+    
     def test(self):
         """
         Checks whether all required attributes are set. Throws an exception

@@ -54,6 +54,19 @@ class ExclusiveChoice(MultiChoice):
         self.default_task_spec = task_spec.name
         task_spec._connect_notify(self)
 
+    def disconnect(self, task_spec):
+        """
+        Disconnects the default task spec.
+
+        :type  task_spec: TaskSpec
+        :param task_spec: The following task spec. Must match the current
+                          default task spec.
+        """
+        assert self.default_task_spec == task_spec
+        assert task_spec in self.outputs
+        self.outputs.remove(task_spec)
+        task_spec._disconnect_notify(self)
+
     def test(self):
         """
         Checks whether all required attributes are set. Throws an exception

@@ -126,6 +126,17 @@ class TaskSpec(object):
         """
         self.inputs.append(taskspec)
 
+    def _disconnect_notify(self, taskspec):
+        """
+        Called by the previous task to let us know that we've been
+        disconnected.
+
+        :type  taskspec: TaskSpec
+        :param taskspec: The task by which just disconnected us.
+        """
+        assert taskspec in self.inputs
+        self.inputs.remove(taskspec)
+        
     def ancestors(self):
         """Returns list of ancestor task specs based on inputs"""
         results = []
@@ -210,6 +221,23 @@ class TaskSpec(object):
         """
         taskspec.connect(self)
 
+    def disconnect(self, taskspec):
+        """Remove the given task from the list of outputs. In other words, the
+        inverse of connect().
+
+        :type  taskspec: TaskSpec
+        :param taskspec: The output task that is to be removed. Must be
+                         connected.
+        """
+        assert taskspec in self.outputs
+        self.outputs.remove(taskspec)
+        taskspec._disconnect_notify(self)
+
+    def unfollow(self, taskspec):
+        """Make this task not follow the provided one. The inverse of follow().
+        """
+        taskspec.disconnect(self)
+        
     def test(self):
         """
         Checks whether all required attributes are set. Throws an exception
