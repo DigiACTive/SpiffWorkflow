@@ -56,16 +56,15 @@ class ExclusiveChoice(MultiChoice):
 
     def disconnect(self, task_spec):
         """
-        Disconnects the default task spec.
+        Disconnects a task spec, regardless of the condition.
+        Deals with default task specs properly.
 
         :type  task_spec: TaskSpec
-        :param task_spec: The following task spec. Must match the current
-                          default task spec.
+        :param task_spec: The following task spec.
         """
-        assert self.default_task_spec == task_spec
-        assert task_spec in self.outputs
-        self.outputs.remove(task_spec)
-        task_spec._disconnect_notify(self)
+        super(ExclusiveChoice, self).disconnect(task_spec)
+        if self.default_task_spec == task_spec:
+            self.default_task_spec = None
 
     def test(self):
         """
