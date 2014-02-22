@@ -38,6 +38,9 @@ class StartTask(TaskSpec):
         """
         TaskSpec.__init__(self, parent, 'Start', **kwargs)
 
+    def delete(self):
+        raise WorkflowException(self, "Cannot delete the start task.")
+
     def _connect_notify(self, task_spec):
         """
         Called by the previous task to let us know that it exists.
