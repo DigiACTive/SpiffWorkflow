@@ -167,6 +167,7 @@ class TaskSpecTest(unittest.TestCase):
         self.assertEquals(len(T3.ancestors()), 5)
         M.delete()
         self.assertEquals(T3.ancestors(), [])
+        self.assertEquals(M.inputs, [])
 
     def test_ancestors_cyclic(self):
         T1 = Join(self.wf_spec, 'T1')
