@@ -80,7 +80,7 @@ class ExclusiveChoice(MultiChoice):
         """
         default = self.default_task_spec
         self.default_task_spec = None
-        self.cond_task_specs.remove((None, default.name))
+        self.cond_task_specs.remove((None, default))
         self.outputs.remove(default)
         # do we fully disconnect it? only if that's the last link
         if default.name not in [a[1] for a in self.cond_task_specs]:
