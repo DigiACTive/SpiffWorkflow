@@ -66,12 +66,13 @@ class ExclusiveChoice(MultiChoice):
         self.cond_task_specs = [cts for cts in self.cond_task_specs
                                 if (cts[1] != task_spec.name or
                                     cts[0] is None)]
+        self.outputs.remove(task_spec)
 
         # now, check if it's been fully removed: its name is no longer in
         # the list of conditional specs (remembering that the default task
         # is in that list with condition None)
         if task_spec.name not in [a[1] for a in self.cond_task_specs]:
-            super(ExclusiveChoice, self).disconnect(task_spec)
+            task_spec._disconnect_notify(self)
 
     def disconnect_default(self):
         """
@@ -80,9 +81,10 @@ class ExclusiveChoice(MultiChoice):
         default = self.default_task_spec
         self.default_task_spec = None
         self.cond_task_specs.remove((None, default.name))
+        self.outputs.remove(default)
         # do we fully disconnect it? only if that's the last link
         if default.name not in [a[1] for a in self.cond_task_specs]:
-            super(ExclusiveChoice, self).disconnect(default)
+            default._disconnect_notify(self)
 
     def test(self):
         """
