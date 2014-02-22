@@ -22,7 +22,6 @@ class StartTaskTest(TaskSpecTest):
         return self.wf_spec.start
 
     def testConstructor(self):
-        print(self.spec)
         self.assertEqual(self.spec.name, 'Start')
         self.assertEqual(self.spec.data, {})
         self.assertEqual(self.spec.defines, {})
