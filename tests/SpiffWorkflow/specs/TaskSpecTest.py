@@ -150,6 +150,24 @@ class TaskSpecTest(unittest.TestCase):
         M.connect(T3)
         self.assertEquals(len(T3.ancestors()), 5)
 
+    def testDelete(self):
+        T1 = Simple(self.wf_spec, 'T1')
+        T2A = Simple(self.wf_spec, 'T2A')
+        T2B = Simple(self.wf_spec, 'T2B')
+        M = Join(self.wf_spec, 'M')
+        T3 = Simple(self.wf_spec, 'T3')
+
+        T1.follow(self.wf_spec.start)
+        T2A.follow(T1)
+        T2B.follow(T1)
+        T2A.connect(M)
+        T2B.connect(M)
+        T3.follow(M)
+
+        self.assertEquals(len(T3.ancestors()), 5)
+        M.delete()
+        self.assertEquals(T3.ancestors(), [])
+
     def test_ancestors_cyclic(self):
         T1 = Join(self.wf_spec, 'T1')
         T2 = Simple(self.wf_spec, 'T2')

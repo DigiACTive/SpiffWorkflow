@@ -117,6 +117,23 @@ class TaskSpec(object):
         self.data.update(self.defines)
         assert self.id is not None
 
+    def delete(self):
+        """Clean up all the links the task_spec has, and removes it from the
+        owning workflow. We don't do this as a destructor because of Python's
+        struggles with destructors with circular references. (See
+        eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/.)
+        This code is really, really circular reference heavy (self ==
+        self._parent.task_specs[self.name]), so rather than trying to
+        break that or weakref it, we just give up and force it to be
+        done explicitly.
+        """
+        for task in self.inputs:
+            self.unfollow(task)
+        for task in self.outputs:
+            self.disconnect(task)
+        self._parent._del_notify(self)
+        self._parent = None
+        
     def _connect_notify(self, taskspec):
         """
         Called by the previous task to let us know that it exists.
