@@ -127,10 +127,12 @@ class TaskSpec(object):
         break that or weakref it, we just give up and force it to be
         done explicitly.
         """
-        for task in self.inputs:
-            self.unfollow(task)
-        for task in self.outputs:
-            self.disconnect(task)
+        # a regular for loop struggles with the fact that unfollow deletes
+        # elements from the inputs list as it goes. (as w/ disconnect)
+        while self.inputs != []:
+            self.unfollow(self.inputs[0])
+        while self.outputs != []:
+            self.disconnect(self.outputs[0])
         self._parent._del_notify(self)
         self._parent = None
         
