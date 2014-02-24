@@ -68,6 +68,14 @@ class ThreadSplit(TaskSpec):
         else:
             self.thread_starter = None
 
+    def delete(self):
+        """Clean up all links this task_spec has, and remove it from the owning
+        workflow. Cleans up the ThreadStarter task too."""
+        assert self.thread_starter is not None
+        self.thread_starter.delete()
+        del self.outputs['ThreadStart']
+        super(ThreadSplit, self).delete()
+
     def connect(self, task_spec):
         """
         Connect the *following* task to this one. In other words, the
@@ -77,6 +85,15 @@ class ThreadSplit(TaskSpec):
         """
         self.thread_starter.outputs.append(task_spec)
         task_spec._connect_notify(self.thread_starter)
+
+    def disconnect(self, task_spec):
+        """
+        Disconnect the given task_spec from this one. Inverse of connect:
+        the task must be an output of this task.
+        """
+        assert task_spec in self.thread_starter.outputs
+        self.thread_starter.outputs.remove(task_spec)
+        task_spec._disconnect_notify(self.thread_starter)
 
     def _find_my_task(self, workflow):
         for task in workflow.branch_tree:

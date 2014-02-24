@@ -61,6 +61,17 @@ class MultiChoice(TaskSpec):
         self.cond_task_specs.append((condition, task_spec.name))
         task_spec._connect_notify(self)
 
+    def disconnect(self, task_spec):
+        """
+        Disconnects the given task spec, regardless of the condition.
+        """
+        assert task_spec in self.outputs
+        self.outputs.remove(task_spec)
+        self.cond_task_specs = [
+            (cond, name) for (cond, name) in self.cond_task_specs
+            if name != task_spec.name]
+        task_spec._disconnect_notify(self)
+        
     def test(self):
         """
         Checks whether all required attributes are set. Throws an exception
