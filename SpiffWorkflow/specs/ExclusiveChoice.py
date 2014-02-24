@@ -54,6 +54,38 @@ class ExclusiveChoice(MultiChoice):
         self.default_task_spec = task_spec.name
         task_spec._connect_notify(self)
 
+    def disconnect(self, task_spec):
+        """
+        Disconnects a task spec, so long as it's not the default.
+
+        :type  task_spec: TaskSpec
+        :param task_spec: The following task spec.
+        """
+        # keep a task if doesn't have the name of spec to be removed or it's
+        # the default (condition is None)
+        self.cond_task_specs = [cts for cts in self.cond_task_specs
+                                if (cts[1] != task_spec.name or
+                                    cts[0] is None)]
+        self.outputs.remove(task_spec)
+
+        # now, check if it's been fully removed: its name is no longer in
+        # the list of conditional specs (remembering that the default task
+        # is in that list with condition None)
+        if task_spec.name not in [a[1] for a in self.cond_task_specs]:
+            task_spec._disconnect_notify(self)
+
+    def disconnect_default(self):
+        """
+        Disconnects the default task spec.
+        """
+        default = self.default_task_spec
+        self.default_task_spec = None
+        self.cond_task_specs.remove((None, default.name))
+        self.outputs.remove(default)
+        # do we fully disconnect it? only if that's the last link
+        if default.name not in [a[1] for a in self.cond_task_specs]:
+            default._disconnect_notify(self)
+
     def test(self):
         """
         Checks whether all required attributes are set. Throws an exception

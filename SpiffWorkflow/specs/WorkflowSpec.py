@@ -35,6 +35,7 @@ class WorkflowSpec(object):
         self.description = ''
         self.file = filename
         self.task_specs = dict()
+        self.next_task_spec_id = 1
         self.start = StartTask(self)
 
     def _add_notify(self, task_spec):
@@ -44,8 +45,14 @@ class WorkflowSpec(object):
         if task_spec.name in self.task_specs:
             raise KeyError('Duplicate task spec name: ' + task_spec.name)
         self.task_specs[task_spec.name] = task_spec
-        task_spec.id = len(self.task_specs)
+        task_spec.id = self.next_task_spec_id
+        self.next_task_spec_id += 1
 
+    def _del_notify(self, task_spec):
+        """Called by a task_spec when it was removed from the workflow."""
+        assert task_spec.name in self.task_specs
+        del self.task_specs[task_spec.name]
+        
     def get_task_spec_from_name(self, name):
         """
         Returns the task with the given name.

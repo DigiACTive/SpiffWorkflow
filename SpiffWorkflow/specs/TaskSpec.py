@@ -117,6 +117,25 @@ class TaskSpec(object):
         self.data.update(self.defines)
         assert self.id is not None
 
+    def delete(self):
+        """Clean up all the links the task_spec has, and removes it from the
+        owning workflow. We don't do this as a destructor because of Python's
+        struggles with destructors with circular references. (See
+        eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/.)
+        This code is really, really circular reference heavy (self ==
+        self._parent.task_specs[self.name]), so rather than trying to
+        break that or weakref it, we just give up and force it to be
+        done explicitly.
+        """
+        # a regular for loop struggles with the fact that unfollow deletes
+        # elements from the inputs list as it goes. (as w/ disconnect)
+        while self.inputs != []:
+            self.unfollow(self.inputs[0])
+        while self.outputs != []:
+            self.disconnect(self.outputs[0])
+        self._parent._del_notify(self)
+        self._parent = None
+        
     def _connect_notify(self, taskspec):
         """
         Called by the previous task to let us know that it exists.
@@ -126,6 +145,17 @@ class TaskSpec(object):
         """
         self.inputs.append(taskspec)
 
+    def _disconnect_notify(self, taskspec):
+        """
+        Called by the previous task to let us know that we've been
+        disconnected.
+
+        :type  taskspec: TaskSpec
+        :param taskspec: The task by which just disconnected us.
+        """
+        assert taskspec in self.inputs
+        self.inputs.remove(taskspec)
+        
     def ancestors(self):
         """Returns list of ancestor task specs based on inputs"""
         results = []
@@ -210,6 +240,23 @@ class TaskSpec(object):
         """
         taskspec.connect(self)
 
+    def disconnect(self, taskspec):
+        """Remove the given task from the list of outputs. In other words, the
+        inverse of connect().
+
+        :type  taskspec: TaskSpec
+        :param taskspec: The output task that is to be removed. Must be
+                         connected.
+        """
+        assert taskspec in self.outputs
+        self.outputs.remove(taskspec)
+        taskspec._disconnect_notify(self)
+
+    def unfollow(self, taskspec):
+        """Make this task not follow the provided one. The inverse of follow().
+        """
+        taskspec.disconnect(self)
+        
     def test(self):
         """
         Checks whether all required attributes are set. Throws an exception
