@@ -84,7 +84,7 @@ class NetworkXSerializer(Serializer):
         class_to_shape_default = class_to_shape_default or \
             _class_to_shape_default
         thedict = _dictserializer.serialize_workflow_spec(wf_spec, **kwargs)
-        graph = nx.DiGraph()
+        graph = nx.MultiDiGraph()
         # add nodes
         for name, spec in thedict['task_specs'].items():
             label = name
